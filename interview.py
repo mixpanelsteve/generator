@@ -1,9 +1,11 @@
+#!/usr/bin/python
 ''' create a simple funnel that has some problems '''
 import credentials
 import json
 import random
 import socket
 import struct
+import sys
 import time
 
 local_ip = '69.12.252.210'
@@ -25,13 +27,30 @@ def create_event(event_name, properties):
     events[event_name].append(temp_event)
 
 def create_landing_event(user):
-    create_event("Landing Page", {'distinct_id': user['distinct_id'], 'time': user['user_time'], 'token': credentials.API_TOKEN, 'library': 'javascript', 'ip': user['ip']})
+    create_event("Landing Page", {'distinct_id': user['distinct_id'],
+                                  'time': user['user_time'],
+                                  'token': credentials.API_TOKEN,
+                                  'library': 'javascript',
+                                  'ip': user['ip']}
+                )
 
 def create_registration(user):
-    create_event("Registration Complete", {'ip': user['ip'], 'time': user['user_time'], 'token': credentials.API_TOKEN, 'library': 'Java'})
+    create_event("Registration Complete", {'ip': user['ip'],
+                                           'mixpanel id': user['distinct_id'],
+                                           'email': user['email'],
+                                           'time': user['user_time'],
+                                           'token': credentials.API_TOKEN,
+                                           'library': 'Java'}
+                )
 
 def create_purchase(user):
-    create_event("Purchase", {'distinct_id': user['distinct_id'], 'time': user['user_time'], 'token': credentials.API_TOKEN, 'library': 'javascript', 'item category': random.choice(categories), 'ip': user['ip']})
+    create_event("Purchase", {'distinct_id': user['distinct_id'],
+                              'time': user['user_time'],
+                              'token': credentials.API_TOKEN,
+                              'library': 'javascript',
+                              'item category': random.choice(categories),
+                              'ip': user['ip']}
+                )
 
 def eventer(step, user):
 
@@ -39,9 +58,10 @@ def eventer(step, user):
     if step == 0:
         create_landing_event(user)
     elif step == 1:
+        user['email'] = generate_email()
         create_registration(user)
-        user['distinct_id'] = generate_email()
     elif step == 2:
+        user['distinct_id'] = user['email']
         create_purchase(user)
     elif step == 3:
         create_landing_event(user)
@@ -68,8 +88,17 @@ def creator():
             j, user =  eventer(j, user)
             user['user_time'] += int(random.random()*(current_time - user['user_time'])/random.randint(1, 4))
 
-creator()
-for event_name in events.keys():
-    with open(event_name + ".json", "w") as f:
-        for line in events[event_name]:
-            f.write(json.dumps(line) + '\n')
+
+if __name__ == '__main__':
+
+    if len(sys.argv) > 1:
+        token = sys.argv[1]
+    else:
+        print 'no token supplied'
+        exit()
+
+    #creator()
+    for event_name in events.keys():
+        with open(event_name + ".json", "w") as f:
+            for line in events[event_name]:
+                f.write(json.dumps(line) + '\n')
